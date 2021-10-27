@@ -15,6 +15,7 @@ build-dev: # Build dev requirements
 	make python-requirements
 
 build: # Build lambdas
+	make event-receiver-build
 	make event-sender-build
 
 stop: project-stop # Stop project
@@ -36,7 +37,7 @@ build-and-deploy: # - mandatory: PROFILE
 
 python-requirements: # Installs whole project python requirements
 	make docker-run-tools \
-		CMD="pip install -r requirements.txt -r requirements-dev.txt -r event_sender/requirements.txt" \
+		CMD="pip install -r requirements.txt -r requirements-dev.txt -r event_receiver/requirements.txt -r event_sender/requirements.txt" \
 		DIR=./application
 
 unit-test: # Runs whole project unit tests
@@ -113,6 +114,51 @@ common-code-remove: ### Remove common code from lambda direcory - mandatory: LAM
 	rm -rf $(APPLICATION_DIR)/$(LAMBDA_DIR)/common
 
 # ==============================================================================
+# Event Receiver
+
+event-receiver-build: ### Build event receiver lambda docker image
+	make common-code-copy LAMBDA_DIR=event_receiver
+	cd $(APPLICATION_DIR)/event_receiver
+	tar -czf $(DOCKER_DIR)/event-receiver/assets/event-receiver-app.tar.gz \
+		--exclude=tests \
+		*.py \
+		common \
+		requirements.txt
+	cd $(PROJECT_DIR)
+	make docker-image NAME=event-receiver AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
+	make event-receiver-clean
+	export VERSION=$$(make docker-image-get-version NAME=event-receiver)
+
+event-receiver-clean: ### Clean event receiver lambda docker image directory
+	rm -fv $(DOCKER_DIR)/event-receiver/assets/event-receiver-app.tar.gz
+	make common-code-remove LAMBDA_DIR=event_receiver
+
+event-receiver-stop: ### Stop running event receiver lambda
+	docker stop event-receiver 2> /dev/null ||:
+
+event-receiver-start: ### Start event receiver lambda
+	make docker-run IMAGE=$(DOCKER_REGISTRY)/event-receiver:latest ARGS=" \
+	-d \
+	-p 9000:8080 \
+	-e FUNCTION_NAME=event-receiver \
+	-e LOG_LEVEL=INFO \
+	-e POWERTOOLS_METRICS_NAMESPACE="dos-integration" \
+	-e POWERTOOLS_SERVICE_NAME="event-receiver" \
+	" \
+	CONTAINER="event-receiver"
+
+event-receiver-trigger: ### Trigger event receiver lambda
+	curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"message": "hello world", "username": "lessa"}'
+
+event-receiver-run: ### A rebuild and restart of the event receiver lambda.
+	make event-receiver-stop
+	make event-receiver-build
+	make event-receiver-start
+	make event-receiver-trigger
+
+
+
+# ==============================================================================
 # Event Sender
 
 event-sender-build: ### Build event sender lambda docker image
@@ -159,9 +205,11 @@ event-sender-run: ### A rebuild and restart of the event sender lambda.
 # Serverless
 
 push-images: # Use VERSION=[] to push a perticular version otherwise with default to latest
+	make docker-push NAME=event-receiver AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
 	make docker-push NAME=event-sender AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
-# make docker-push NAME=event-processor
-# make docker-push NAME=event-receiver
+
+push-event-receiver:
+	make docker-push NAME=event-receiver AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
 
 serverless-requirements: # Install serverless plugins
 	make serverless-install-plugin NAME="serverless-vpc-discovery"
