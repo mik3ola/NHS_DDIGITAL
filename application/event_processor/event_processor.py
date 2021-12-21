@@ -7,7 +7,7 @@ from boto3 import client
 from change_request import ChangeRequest
 from changes import get_changes
 from common.middlewares import unhandled_exception_logging, set_correlation_id_if_none_set
-from common.utilities import invoke_lambda_function, is_mock_mode
+from common.utilities import invoke_lambda_function
 from dos import VALID_SERVICE_TYPES, VALID_STATUS_ID, DoSService, get_matching_dos_services
 from nhs import NHSEntity
 from reporting import report_closed_or_hidden_services, log_unmatched_nhsuk_pharmacies
@@ -142,7 +142,15 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> None:
 
     event_processor.get_change_requests()
 
-    if not is_mock_mode():
-        event_processor.send_changes()
-    else:
-        logger.info("Mock Mode on. Change requests will not be sent")
+    # if not is_mock_mode():
+    events_bridge = client("events")
+    events_bridge.put_events(
+        Entries=[
+            {
+                "Detail": dumps(event_processor.change_requests),
+            },
+        ]
+    )
+    # event_processor.send_changes()
+    # else:
+    #     logger.info("Mock Mode on. Change requests will not be sent")
