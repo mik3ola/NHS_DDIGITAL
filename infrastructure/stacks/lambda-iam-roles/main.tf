@@ -29,6 +29,18 @@ resource "aws_iam_role_policy" "event_processor_policy" {
     {
       "Effect": "Allow",
       "Action": [
+        "kms:DescribeKey",
+        "kms:Encrypt",
+        "kms:Verify",
+        "kms:GetKeyPolicy",
+        "kms:Decrypt",
+        "kms:GetPublicKey"
+      ],
+      "Resource": "${var.key_arn}"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
         "secretsmanager:Describe*",
         "secretsmanager:Get*",
         "secretsmanager:List*"

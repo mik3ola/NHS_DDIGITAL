@@ -42,10 +42,10 @@ variable "environment" {
 #  Key Management Service  #
 ############################
 
-output "key_id" {
+output "kms_key_id" {
   value = aws_kms_key.my_kms_key.key_id
 }
 
-output "key_arn" {
+output "kms_key_arn" {
   value = aws_kms_key.my_kms_key.arn
 }
