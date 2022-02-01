@@ -12,7 +12,7 @@ resource "aws_kms_key" "kms_managed_key" {
 
 }
 
-resource "aws_kms_alias" "my_kms_alias" {
+resource "aws_kms_alias" "kms_managed_key_alias" {
   target_key_id = aws_kms_key.my_kms_key.key_id
-  name          = "alias/${var.kms_alias}"
+  name          = "alias/${var.kms_managed_key_alias}"
 }
