@@ -81,3 +81,7 @@ variable "change_events_table_name" {
 variable "signing_key_alias" {
   description = "Alias of key used for signing"
 }
+
+variable "kms_key_arn" {
+  description = "The key arn of the Key Management key"
+}
