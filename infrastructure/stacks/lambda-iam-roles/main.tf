@@ -36,7 +36,7 @@ resource "aws_iam_role_policy" "event_processor_policy" {
         "kms:Decrypt",
         "kms:GetPublicKey"
       ],
-      "Resource": "${var.key_arn}"
+      "Resource": "${var.kms_key_arn}"
     },
     {
       "Effect": "Allow",

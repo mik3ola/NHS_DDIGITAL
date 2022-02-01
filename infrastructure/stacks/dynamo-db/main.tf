@@ -40,6 +40,4 @@ resource "aws_dynamodb_table" "message-history-table" {
     service = var.project_id
   }
 
-  
-
 }
