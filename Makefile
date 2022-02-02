@@ -36,7 +36,7 @@ deploy: # Deploys whole project - mandatory: PROFILE
 		make terraform-apply-auto-approve STACKS=dos-api-gateway-mock
 	fi
 	eval "$$(make -s populate-deployment-variables)"
-	make terraform-apply-auto-approve STACKS=lambda-security-group,lambda-iam-roles,dynamo-db
+	make terraform-apply-auto-approve STACKS=key-management-service,lambda-security-group,lambda-iam-roles,dynamo-db
 	make serverless-deploy
 	make terraform-apply-auto-approve STACKS=change-request-receiver-route53,eventbridge,api-gateway-sqs,splunk-logs,cloudwatch-dashboard
 

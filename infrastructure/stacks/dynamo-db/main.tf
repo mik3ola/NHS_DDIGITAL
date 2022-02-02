@@ -6,7 +6,7 @@ resource "aws_dynamodb_table" "message-history-table" {
 
   server_side_encryption {
     enabled = true
-    kms_key_arn = aws_kms_key.kms_managed_key.arn
+    kms_key_arn = data.aws_kms_key.kms_managed_key.arn
   }
 
   attribute {
