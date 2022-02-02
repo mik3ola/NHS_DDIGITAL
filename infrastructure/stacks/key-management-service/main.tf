@@ -1,5 +1,5 @@
 
-resource "aws_kms_key" "kms_managed_key" {
+resource "aws_kms_key" "kms_key" {
   description         = "KMS Keys for Data Encryption"
   customer_master_key_spec = "SYMMETRIC_DEFAULT"
   is_enabled               = true
@@ -13,12 +13,12 @@ resource "aws_kms_key" "kms_managed_key" {
 }
 
 resource "aws_kms_alias" "kms_managed_key_alias" {
-  target_key_id = aws_kms_key.my_kms_key.key_id
+  target_key_id = aws_kms_key.kms_key.key_id
   name          = "alias/${var.kms_managed_key_alias}"
 }
 
 
 data "aws_kms_key" "kms_managed_key" {
-  key_id = aws_kms_key.my_kms_key.key_id
-  arn = aws_kms_key.my_kms_key.arn
+  key_id = aws_kms_key.kms_key.key_id
+  arn = aws_kms_key.kms_key.arn
 }
