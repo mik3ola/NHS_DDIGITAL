@@ -36,3 +36,11 @@ variable "project_id" {
 variable "environment" {
   description = "Environment name"
 }
+
+############################
+#  Key Management Service  #
+############################
+
+variable "kms_managed_key_alias" {
+  description = "The alias for the customer managed key"
+}
