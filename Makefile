@@ -11,10 +11,12 @@ setup: project-config # Set up project
 	make mock-dos-db-setup
 
 build: # Build lambdas
-	make -s event-sender-build AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
-	make -s event-processor-build AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
-	make -s fifo-dlq-handler-build AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
-	make -s eventbridge-dlq-handler-build AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
+	make -s event-sender-build \
+		event-processor-build \
+		fifo-dlq-handler-build \
+		eventbridge-dlq-handler-build \
+		event-replay-build \
+		AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
 
 start: # Stop project
 	make project-start AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
@@ -149,6 +151,9 @@ clean: # Runs whole project clean
 		python-clean \
 		event-sender-clean \
 		event-processor-clean \
+		fifo-dlq-handler-clean \
+		eventbridge-dlq-handler-clean \
+		event-replay-clean \
 		tester-clean \
 		authoriser-clean \
 		dos-api-gateway-clean
@@ -224,7 +229,7 @@ event-processor-run: ### A rebuild and restart of the event processor lambda.
 # ==============================================================================
 # First In First Out Dead Letter Queue Handler (fifo-dlq-handler)
 
-fifo-dlq-handler-build: ### Build event processor lambda docker image
+fifo-dlq-handler-build: ### Build fifo dlq handler lambda docker image
 	make common-code-copy LAMBDA_DIR=fifo_dlq_handler
 	cp -f $(APPLICATION_DIR)/fifo_dlq_handler/requirements.txt $(DOCKER_DIR)/fifo-dlq-handler/assets/requirements.txt
 	cd $(APPLICATION_DIR)/fifo_dlq_handler
@@ -237,7 +242,7 @@ fifo-dlq-handler-build: ### Build event processor lambda docker image
 	make fifo-dlq-handler-clean
 	export VERSION=$$(make docker-image-get-version NAME=fifo-dlq-handler)
 
-fifo-dlq-handler-clean: ### Clean event processor lambda docker image directory
+fifo-dlq-handler-clean: ### Clean fifo dlq handler lambda docker image directory
 	rm -fv $(DOCKER_DIR)/fifo-dlq-handler/assets/*.tar.gz
 	rm -fv $(DOCKER_DIR)/fifo-dlq-handler/assets/*.txt
 	make common-code-remove LAMBDA_DIR=fifo_dlq_handler
@@ -245,7 +250,7 @@ fifo-dlq-handler-clean: ### Clean event processor lambda docker image directory
 # ==============================================================================
 # Eventbridge Dead Letter Queue Handler (eventbridge-dlq-handler)
 
-eventbridge-dlq-handler-build: ### Build event processor lambda docker image
+eventbridge-dlq-handler-build: ### Build eventbridge dlq handler lambda docker image
 	make common-code-copy LAMBDA_DIR=eventbridge_dlq_handler
 	cp -f $(APPLICATION_DIR)/eventbridge_dlq_handler/requirements.txt $(DOCKER_DIR)/eventbridge-dlq-handler/assets/requirements.txt
 	cd $(APPLICATION_DIR)/eventbridge_dlq_handler
@@ -258,10 +263,31 @@ eventbridge-dlq-handler-build: ### Build event processor lambda docker image
 	make eventbridge-dlq-handler-clean
 	export VERSION=$$(make docker-image-get-version NAME=eventbridge-dlq-handler)
 
-eventbridge-dlq-handler-clean: ### Clean event processor lambda docker image directory
+eventbridge-dlq-handler-clean: ### Clean eventbridge dlq handler lambda docker image directory
 	rm -fv $(DOCKER_DIR)/eventbridge-dlq-handler/assets/*.tar.gz
 	rm -fv $(DOCKER_DIR)/eventbridge-dlq-handler/assets/*.txt
 	make common-code-remove LAMBDA_DIR=eventbridge_dlq_handler
+
+# ==============================================================================
+# Eventbridge Dead Letter Queue Handler (eventbridge-dlq-handler)
+
+event-replay-build: ### Build event replay lambda docker image
+	make common-code-copy LAMBDA_DIR=event_replay
+	cp -f $(APPLICATION_DIR)/event_replay/requirements.txt $(DOCKER_DIR)/event-replay/assets/requirements.txt
+	cd $(APPLICATION_DIR)/event_replay
+	tar -czf $(DOCKER_DIR)/event-replay/assets/event-replay-app.tar.gz \
+		--exclude=tests \
+		*.py \
+		common
+	cd $(PROJECT_DIR)
+	make docker-image NAME=event-replay AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
+	make event-replay-clean
+	export VERSION=$$(make docker-image-get-version NAME=event-replay)
+
+event-replay-clean: ### Clean event replay lambda docker image directory
+	rm -fv $(DOCKER_DIR)/event-replay/assets/*.tar.gz
+	rm -fv $(DOCKER_DIR)/event-replay/assets/*.txt
+	make common-code-remove LAMBDA_DIR=event_replay
 
 # ==============================================================================
 # Authoriser (for dos api gateway mock)
@@ -273,7 +299,7 @@ authoriser-build-and-push: ### Build authoriser lambda docker image
 		--exclude=tests \
 		*.py
 	cd $(PROJECT_DIR)
-	make docker-image NAME=authoriser AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
+	make -s docker-image NAME=authoriser AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
 	make authoriser-clean
 	make docker-push NAME=authoriser AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
 
@@ -291,7 +317,7 @@ dos-api-gateway-build-and-push:
 		--exclude=tests \
 		*.py
 	cd $(PROJECT_DIR)
-	make docker-image NAME=dos-api-gateway AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
+	make -s docker-image NAME=dos-api-gateway AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
 	make dos-api-gateway-clean
 	make docker-push NAME=dos-api-gateway AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
 
@@ -322,6 +348,7 @@ push-images: # Use VERSION=[] to push a perticular version otherwise with defaul
 	make docker-push NAME=event-processor AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
 	make docker-push NAME=fifo-dlq-handler AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
 	make docker-push NAME=eventbridge-dlq-handler AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
+	make docker-push NAME=event-replay AWS_ACCOUNT_ID_MGMT=$(AWS_ACCOUNT_ID_NONPROD)
 
 serverless-requirements: # Install serverless plugins
 	make serverless-install-plugin NAME="serverless-vpc-discovery"
@@ -523,3 +550,5 @@ create-ecr-repositories:
 	make docker-create-repository NAME=event-processor
 	make docker-create-repository NAME=event-sender
 	make docker-create-repository NAME=fifo-dlq-handler
+	make docker-create-repository NAME=eventbridge-dlq-handler
+	make docker-create-repository NAME=event-replay
