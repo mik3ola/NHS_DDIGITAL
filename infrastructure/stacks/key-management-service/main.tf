@@ -8,8 +8,6 @@ resource "aws_kms_key" "kms_key" {
   tags = {
     service = var.project_id
   }
-
-
 }
 
 resource "aws_kms_alias" "kms_managed_key_alias" {
